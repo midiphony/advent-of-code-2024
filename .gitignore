@@ -10,6 +10,10 @@
 **/bin/
 **/build/
 
+# Visual Studio
+**/.vs
+**/CMakeSettings.json
+
 
 ## Might be needed but we'll see
 # include/*
