@@ -62,6 +62,36 @@ bool IsReportSafeByDefault(std::vector<int> const & levels)
     return false;
 }
 
+// Brute forcing safety check by skipping a level
+bool IsReportSafeWithTolerance(std::vector<int> const & levels, int & skippedIndex)
+{
+    if (levels.size() <= 0)
+        return false;
+    else if (levels.size() == 1)
+        return true;
+
+    std::vector<int> tolerantLevels(levels.size() - 1);
+
+    for (skippedIndex = 0; skippedIndex < levels.size(); skippedIndex++)
+    {
+        tolerantLevels.clear();
+
+        for (int i = 0; i < levels.size(); i++)
+        {
+            if (i != skippedIndex)
+                tolerantLevels.push_back(levels[i]);
+        }
+
+        if (IsReportSafeByDefault(tolerantLevels))
+            break;
+    }
+
+    if (skippedIndex >= levels.size())
+        return false;
+
+    return true;
+}
+
 int main(int argc, char *argv[])
 {
     std::cout << "Welcome to Advent of Code 2024 - day 2 !" << std::endl;
@@ -91,7 +121,41 @@ int main(int argc, char *argv[])
             safeReportsNumber++;
     }
 
-    std::cout << "\n\n" << "Safe reports number : " << safeReportsNumber << std::endl;
+    std::cout << "\n\n" << "Safe reports number : " << safeReportsNumber << "\n\n\n";
+
+    // Exercise 2
+    infile.close();
+    infile.open(inputFileName);
+
+    int tolerantReports = 0;
+    while (GetLevelsLine(infile, levels))
+    {
+        int skippedIndex;
+
+        if (IsReportSafeByDefault(levels))
+            tolerantReports++;
+        else if (IsReportSafeWithTolerance(levels, skippedIndex))
+        {
+            tolerantReports++;
+
+            std::cout << "Is Safe with tolerance : ";
+            for (const int & level : levels)
+                std::cout << level << " ";
+            std::cout << "   -----   " << "unsafe level : " << levels[skippedIndex] << std::endl;
+        }
+        else
+        {
+            std::cout << "NOT SAFE : ";
+            for (const int & level : levels)
+                std::cout << level << " ";
+            std::cout << std::endl;
+        }
+    }
+
+    
+
+    std::cout << "\n\n" << "Safe (WITH TOLERANCE) reports number : " << tolerantReports << std::endl;
+
 
     return 0;
 }
