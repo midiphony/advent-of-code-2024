@@ -28,8 +28,6 @@ int GetPositionAfterNextInteger(std::string const &line, int const &position, in
 
 int main(int argc, char *argv[])
 {
-    std::cout << "Welcome to Advent of Code 2024 - day 2 !" << std::endl;
-
     char *inputFileName;
     if (argc <= 1)
     {
