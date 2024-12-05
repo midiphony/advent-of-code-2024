@@ -5,8 +5,46 @@
 
 #include <map>
 #include <set>
+#include <iterator>
 
 // #include <string>
+
+bool IsUpdateInvalid(const std::vector<int> & update, const std::map<int, std::set<int>> & priorityRules, 
+                        int startingCheckIndex, int & problematicPriorNumberIndex, int & problematicLaterNumberIndex)
+{
+    bool isUpdateInvalid = false;
+    int checkIndex = startingCheckIndex;
+
+    for (; checkIndex < update.size() - 1; checkIndex++)
+    {
+        int firstNumber = update[checkIndex];
+
+        std::vector<int>::const_iterator constUpdateIt = update.begin();
+
+        for (std::vector<int>::const_iterator laterNumberIterator = update.cbegin() + checkIndex + 1; laterNumberIterator != update.end() && false == isUpdateInvalid; laterNumberIterator++)
+        {
+            int laterNumber = *laterNumberIterator;
+
+            std::map<int, std::set<int>>::const_iterator kvpFromPriorityRule = priorityRules.find(laterNumber);
+            if (kvpFromPriorityRule != priorityRules.end() && kvpFromPriorityRule->second.find(firstNumber) != kvpFromPriorityRule->second.end())
+            {
+                isUpdateInvalid = true;
+
+                // // DEBUG :
+                // std::cout << "Following update is invalid : ";
+                // for (int updateNumber : update)
+                //     std::cout << updateNumber << ",";
+
+                // std::cout << "\t because of numbers : " << laterNumber << "|" << firstNumber << std::endl;
+
+                problematicPriorNumberIndex = checkIndex;
+                problematicLaterNumberIndex = std::distance(update.cbegin(), laterNumberIterator);
+            }
+        }
+    }
+
+    return isUpdateInvalid;
+}
 
 int main(int argc, char *argv[])
 {
@@ -25,12 +63,15 @@ int main(int argc, char *argv[])
         std::cout << "failed to open " << inputFileName << '\n';
         return 2;
     }
+    
+
+    std::map<int, std::set<int>> priorityRules;
+    std::vector<std::vector<int>> updatesList;
+    std::vector<std::vector<int>> incorrectUpdatesList; // For part two
 
     // Exercise 1
     {
         int validUpdatesMiddlePageNumberSum = 0;
-
-        std::map<int, std::set<int>> priorityRules;
 
         std::string currentLine;
         
@@ -48,7 +89,6 @@ int main(int argc, char *argv[])
         }
 
         // Parse updates
-        std::vector<std::vector<int>> updatesList;
         while (inFile.peek() != EOF)
         {
             int newNumber;
@@ -61,43 +101,26 @@ int main(int argc, char *argv[])
             updatesList.push_back(update);
         }
 
-        for(auto update : updatesList)
+        for(auto & update : updatesList)
         {
             bool isUpdateInvalid = false;
 
-            for (int firstNumberIndex = 0; firstNumberIndex < update.size() - 1; firstNumberIndex++)
-            {
-                int firstNumber = update[firstNumberIndex];
-
-                for (std::vector<int>::iterator laterNumberIterator = update.begin() + firstNumberIndex + 1; laterNumberIterator != update.end() && false == isUpdateInvalid; laterNumberIterator++)
-                {
-                    int laterNumber = *laterNumberIterator;
-
-                    std::map<int, std::set<int>>::iterator kvpFromPriorityRule = priorityRules.find(laterNumber);
-                    if (kvpFromPriorityRule != priorityRules.end() && kvpFromPriorityRule->second.find(firstNumber) != kvpFromPriorityRule->second.end())
-                    {
-                        isUpdateInvalid = true;
-
-                        // DEBUG :
-                        std::cout << "Following update is invalid : ";
-                        for (int updateNumber : update)
-                            std::cout << updateNumber << ",";
-
-                        std::cout << "\t because of numbers : " << laterNumber << "|" << firstNumber << std::endl;
-                    }
-                }
-            }
-
-            if (false == isUpdateInvalid)
+            int problematicPriorNumberIndex, problematicLaterNumberIndex;
+            if (false == IsUpdateInvalid(update, priorityRules, 0, problematicPriorNumberIndex, problematicLaterNumberIndex))
             {
                 int middleValue = *(update.begin() + update.size()/2);
 
-                std::cout << "Valid : ";
-                for (int updateNumber : update)
-                    std::cout << updateNumber << ",";
-                std::cout << "\t middle : " << middleValue << std::endl;
+                // // DEBUG
+                // std::cout << "Valid : ";
+                // for (int updateNumber : update)
+                //     std::cout << updateNumber << ",";
+                // std::cout << "\t middle : " << middleValue << std::endl;
 
                 validUpdatesMiddlePageNumberSum += middleValue;
+            }
+            else
+            {
+                incorrectUpdatesList.push_back(update);
             }
         }
 
@@ -106,8 +129,44 @@ int main(int argc, char *argv[])
 
     // Exercise 2
     {
+        int newValidUpdatesMiddlePageNumberSum = 0;
 
-        // std::cout << "\n\n" << "Exercise 2 result :\n" << TODO << "\n\n\n";
+        for(std::vector<int> updateToFix : incorrectUpdatesList)
+        {
+            int checkIndex = 0;
+            bool updateStillInvalid = true;
+
+            while (checkIndex < updateToFix.size() && true == updateStillInvalid)
+            {
+                int problematicPriorNumberIndex, problematicLaterNumberIndex;
+                if (IsUpdateInvalid(updateToFix, priorityRules, checkIndex, problematicPriorNumberIndex, problematicLaterNumberIndex))
+                {
+                    checkIndex = problematicPriorNumberIndex;
+
+                    // swap
+                    int tmp = updateToFix[problematicLaterNumberIndex];
+                    updateToFix[problematicLaterNumberIndex] = updateToFix[problematicPriorNumberIndex];
+                    updateToFix[problematicPriorNumberIndex] = tmp;
+                }
+                else
+                {
+                    updateStillInvalid = false;
+                }
+            }
+
+            int middleValue = *(updateToFix.begin() + updateToFix.size()/2);
+
+            // // DEBUG
+            // std::cout << "Fixed : ";
+            // for (int updateNumber : updateToFix)
+            //     std::cout << updateNumber << ",";
+            // std::cout << "\t middle : " << middleValue << std::endl;
+
+            newValidUpdatesMiddlePageNumberSum += middleValue;
+        }
+        
+
+        std::cout << "\n\n" << "Exercise 2 result :\n" << newValidUpdatesMiddlePageNumberSum << "\n\n\n";
     }
 
     return 0;
