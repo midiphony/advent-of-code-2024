@@ -26,6 +26,11 @@ struct Position
 {
     int x, y;
 
+    bool operator != (const Position& otherPosition) const
+    {
+        return x != otherPosition.x || y != otherPosition.y;
+    }
+
     bool operator < (const Position& otherPosition) const
     {
         if (y < otherPosition.y)
@@ -47,10 +52,11 @@ using LabMap = std::vector<std::vector<Cell>>;
 
 // Make the guard walk in front of him
 // Return true if he could walk or turn, false if he's getting out of the map
-bool TryWalkToNextPosition (const LabMap &labMap, Guard & guard)
+bool TryWalkToNextPosition (const LabMap &labMap, Guard & guard, bool & metObstacle)
 {
     Position nextPosition = { -1, -1 };
     Position &guardPosition = guard.position;
+    metObstacle = false;
 
     switch (guard.direction)
     {
@@ -78,6 +84,7 @@ bool TryWalkToNextPosition (const LabMap &labMap, Guard & guard)
         {
             // Assuming directions are ordered 90° right from each other
             guard.direction = static_cast<Direction>((guard.direction + 1) % 4);
+            metObstacle = true;
             return true;
         }
     }
@@ -89,6 +96,14 @@ bool TryWalkToNextPosition (const LabMap &labMap, Guard & guard)
 
     guardPosition = nextPosition;
     return true;
+}
+
+// Make the guard walk in front of him
+// Return true if he could walk or turn, false if he's getting out of the map
+bool TryWalkToNextPosition (const LabMap &labMap, Guard & guard)
+{
+    bool metObstacle;
+    return TryWalkToNextPosition(labMap, guard, metObstacle);
 }
 
 int main(int argc, char *argv[])
@@ -234,12 +249,12 @@ int main(int argc, char *argv[])
 
         int validNewObstaclePositionNumber = 0;
 
-        std::map<Position, std::set<Direction>> visitedPositionsWithDirections;
+        std::set<Position> positionsWhereGuardMetObstacle;
 
         // Try to place an obstacle over every visited positions from part one (except the initial position where the guard is already positioned)
         for (std::vector<Position>::iterator positionIter = visitedPositions.begin() + 1; positionIter != visitedPositions.end(); positionIter++)
         {
-            visitedPositionsWithDirections.clear();
+            positionsWhereGuardMetObstacle.clear();
 
             guard = guardInitialState;
             bool hasGuardLooped = false;
@@ -249,26 +264,33 @@ int main(int argc, char *argv[])
             labMap[positionToCheck.y][positionToCheck.x] = Obstacle;
 
             Position &guardPosition = guard.position;
+            Position previousGuardPosition = {-1, -1};
             while (guardPosition.x >= 0 && guardPosition.x < rowSize 
                     && guardPosition.y >= 0 && guardPosition.y < labMap.size())
             {
                 Position nextPosition = { -1, -1 };
                 Guard oldGuardState = guard;
 
-                if (false == TryWalkToNextPosition(labMap, guard))
+                bool metObstacle = false;
+
+                if (false == TryWalkToNextPosition(labMap, guard, metObstacle))
                     break; // out of map
 
-                if (std::map<Position, std::set<Direction>>::iterator potentiallyVisitedPosition = visitedPositionsWithDirections.find(oldGuardState.position); potentiallyVisitedPosition != visitedPositionsWithDirections.end())
+                if (previousGuardPosition != guard.position && metObstacle)
                 {
-                    std::set<Direction> &directionSet = potentiallyVisitedPosition->second;
-                    if (auto potentiallySameDirection = directionSet.find(oldGuardState.direction); potentiallySameDirection != directionSet.end())
+                    if (metObstacle)
                     {
-                        hasGuardLooped = true;
-                        break;
-                    }
-                }
+                        if (std::set<Position>::iterator potentiallyVisitedPosition = positionsWhereGuardMetObstacle.find(guard.position); potentiallyVisitedPosition != positionsWhereGuardMetObstacle.end())
+                        {
+                            hasGuardLooped = true;
+                            break;
+                        }
 
-                visitedPositionsWithDirections[oldGuardState.position].insert(oldGuardState.direction);
+                        positionsWhereGuardMetObstacle.insert(guard.position);
+                    }
+
+                    previousGuardPosition = guard.position;
+                }
             }
 
             // Reset labMap state after check
