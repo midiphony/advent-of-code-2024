@@ -3,6 +3,10 @@
 #include <fstream>
 #include <sstream>
 
+#include <set>
+#include <map>
+#include <exception>
+
 enum Cell
 {
     Empty,
@@ -21,6 +25,16 @@ enum Direction
 struct Position
 {
     int x, y;
+
+    bool operator < (const Position& otherPosition) const
+    {
+        if (y < otherPosition.y)
+            return true;
+        else if (y > otherPosition.y)
+            return false;
+        
+        return x < otherPosition.x;
+    }
 };
 
 struct Guard
@@ -30,6 +44,52 @@ struct Guard
 };
 
 using LabMap = std::vector<std::vector<Cell>>;
+
+// Make the guard walk in front of him
+// Return true if he could walk or turn, false if he's getting out of the map
+bool TryWalkToNextPosition (const LabMap &labMap, Guard & guard)
+{
+    Position nextPosition = { -1, -1 };
+    Position &guardPosition = guard.position;
+
+    switch (guard.direction)
+    {
+        case Up:
+            nextPosition = {guardPosition.x, guardPosition.y + 1};
+            break;
+        case Right:
+            nextPosition = {guardPosition.x + 1, guardPosition.y};
+            break;
+        case Down:
+            nextPosition = {guardPosition.x, guardPosition.y - 1};
+            break;
+        case Left:
+            nextPosition = {guardPosition.x - 1, guardPosition.y };
+            break;
+        default:
+            // std::cerr << "Unknown guard direction : " << guard.direction << std::endl;
+            throw std::invalid_argument("Unknown guard direction : " + guard.direction);
+    }
+
+    if (nextPosition.x >= 0 && nextPosition.x < labMap[0].size()
+        && nextPosition.y >= 0 && nextPosition.y < labMap.size())
+    {
+        if (labMap[nextPosition.y][nextPosition.x] == Obstacle)
+        {
+            // Assuming directions are ordered 90° right from each other
+            guard.direction = static_cast<Direction>((guard.direction + 1) % 4);
+            return true;
+        }
+    }
+    else
+    {
+        guardPosition = nextPosition;
+        return false;
+    }
+
+    guardPosition = nextPosition;
+    return true;
+}
 
 int main(int argc, char *argv[])
 {
@@ -51,6 +111,7 @@ int main(int argc, char *argv[])
 
     LabMap labMap;
     Guard guard;
+    Guard guardInitialState;
     Position mapParsingPosition = {0, 0};
     int rowSize = -1;
 
@@ -123,6 +184,11 @@ int main(int argc, char *argv[])
     // }
     // std::cout << "\n\n\n";
 
+    // Visited positions to check for exercise 2
+    std::vector<Position> visitedPositions;
+
+    guardInitialState = guard;
+
     // Exercise 1
     {
         int distinctVisitedPositionNumber = 0;
@@ -132,41 +198,16 @@ int main(int argc, char *argv[])
                 && guardPosition.y >= 0 && guardPosition.y < labMap.size())
         {
             Position nextPosition = { -1, -1 };
+            Position oldGuardPosition = guardPosition;
 
-            switch (guard.direction)
-            {
-                case Up:
-                    nextPosition = {guardPosition.x, guardPosition.y + 1};
-                    break;
-                case Right:
-                    nextPosition = {guardPosition.x + 1, guardPosition.y};
-                    break;
-                case Down:
-                    nextPosition = {guardPosition.x, guardPosition.y - 1};
-                    break;
-                case Left:
-                    nextPosition = {guardPosition.x - 1, guardPosition.y };
-                    break;
-                default:
-                    std::cerr << "Unknown guard direction : " << guard.direction << std::endl;
-                    return -3;
-            }
+            TryWalkToNextPosition(labMap, guard);
 
-            if (nextPosition.x >= 0 && nextPosition.x < rowSize 
-                    && nextPosition.y >= 0 && nextPosition.y < labMap.size())
+            if (labMap[oldGuardPosition.y][oldGuardPosition.x] == Empty)
             {
-                if (labMap[nextPosition.y][nextPosition.x] == Obstacle)
-                {
-                    // Assuming directions are ordered 90° right from each other
-                    guard.direction = static_cast<Direction>((guard.direction + 1) % 4);
-                    continue;
-                }
-            }
-
-            if (labMap[guardPosition.y][guardPosition.x] == Empty)
-            {
-                labMap[guardPosition.y][guardPosition.x] = Visited;
+                labMap[oldGuardPosition.y][oldGuardPosition.x] = Visited;
                 distinctVisitedPositionNumber++;
+
+                visitedPositions.push_back(oldGuardPosition);
             }
 
             // // DEBUG :
@@ -182,8 +223,6 @@ int main(int argc, char *argv[])
             //     std::cout << std::endl;
             // }
             // std::cout << "\n\n\n";
-
-            guardPosition = nextPosition;
         }
 
         std::cout << "\n\n" << "Exercise 1 result :\n" << distinctVisitedPositionNumber << "\n\n\n";
@@ -191,9 +230,55 @@ int main(int argc, char *argv[])
 
     // Exercise 2
     {
-        // int newValidUpdatesMiddlePageNumberSum = 0;
+        guard = guardInitialState;
 
-        // std::cout << "\n\n" << "Exercise 2 result :\n" << newValidUpdatesMiddlePageNumberSum << "\n\n\n";
+        int validNewObstaclePositionNumber = 0;
+
+        std::map<Position, std::set<Direction>> visitedPositionsWithDirections;
+
+        // Try to place an obstacle over every visited positions from part one (except the initial position where the guard is already positioned)
+        for (std::vector<Position>::iterator positionIter = visitedPositions.begin() + 1; positionIter != visitedPositions.end(); positionIter++)
+        {
+            visitedPositionsWithDirections.clear();
+
+            guard = guardInitialState;
+            bool hasGuardLooped = false;
+
+            // Try to add an obstacle
+            Position positionToCheck = *positionIter;
+            labMap[positionToCheck.y][positionToCheck.x] = Obstacle;
+
+            Position &guardPosition = guard.position;
+            while (guardPosition.x >= 0 && guardPosition.x < rowSize 
+                    && guardPosition.y >= 0 && guardPosition.y < labMap.size())
+            {
+                Position nextPosition = { -1, -1 };
+                Guard oldGuardState = guard;
+
+                if (false == TryWalkToNextPosition(labMap, guard))
+                    break; // out of map
+
+                if (std::map<Position, std::set<Direction>>::iterator potentiallyVisitedPosition = visitedPositionsWithDirections.find(oldGuardState.position); potentiallyVisitedPosition != visitedPositionsWithDirections.end())
+                {
+                    std::set<Direction> &directionSet = potentiallyVisitedPosition->second;
+                    if (auto potentiallySameDirection = directionSet.find(oldGuardState.direction); potentiallySameDirection != directionSet.end())
+                    {
+                        hasGuardLooped = true;
+                        break;
+                    }
+                }
+
+                visitedPositionsWithDirections[oldGuardState.position].insert(oldGuardState.direction);
+            }
+
+            // Reset labMap state after check
+            labMap[positionToCheck.y][positionToCheck.x] = Empty;
+
+            if (hasGuardLooped)
+                validNewObstaclePositionNumber++;
+        }
+
+        std::cout << "\n\n" << "Exercise 2 result :\n" << validNewObstaclePositionNumber << "\n\n\n";
     }
 
     return 0;
