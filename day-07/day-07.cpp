@@ -7,7 +7,7 @@
 
 using CalibrationEquation = std::pair<uint64_t, std::vector<int>>;
 
-bool IsEquationValid(uint64_t testValue, uint64_t previousEvaluation, std::vector<int>::iterator currentIterator, std::vector<int>::iterator endIterator, std::stack<char> &operations)
+bool IsEquationValidPartOne(uint64_t testValue, uint64_t previousEvaluation, std::vector<int>::iterator currentIterator, std::vector<int>::iterator endIterator, std::stack<char> &operations)
 {
     uint64_t value = *currentIterator;
 
@@ -36,7 +36,7 @@ bool IsEquationValid(uint64_t testValue, uint64_t previousEvaluation, std::vecto
     {
         if (multipliedValue > 0 && multipliedValue <= testValue)
         {
-            if (IsEquationValid(testValue, multipliedValue, nextIterator, endIterator, operations))
+            if (IsEquationValidPartOne(testValue, multipliedValue, nextIterator, endIterator, operations))
             {
                 operations.push('*');
                 return true;
@@ -45,9 +45,81 @@ bool IsEquationValid(uint64_t testValue, uint64_t previousEvaluation, std::vecto
 
         if (addedValue <= testValue)
         {
-            if (IsEquationValid(testValue, addedValue, nextIterator, endIterator, operations))
+            if (IsEquationValidPartOne(testValue, addedValue, nextIterator, endIterator, operations))
             {
                 operations.push('+');
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+uint64_t Concatenate(uint64_t a, uint64_t b)
+{
+    std::string sa = std::to_string(a);
+    std::string sb = std::to_string(b);
+
+    return stoll(sa + sb);
+}
+
+bool IsEquationValidPartTwo(uint64_t testValue, uint64_t previousEvaluation, std::vector<int>::iterator currentIterator, std::vector<int>::iterator endIterator, std::stack<char> &operations)
+{
+    uint64_t value = *currentIterator;
+
+    uint64_t multipliedValue = previousEvaluation * value;
+    uint64_t addedValue = previousEvaluation + value;
+    uint64_t concatenatedValue = Concatenate(previousEvaluation, value);
+
+    std::vector<int>::iterator nextIterator = (currentIterator);
+    nextIterator++;
+
+    if (nextIterator == endIterator)
+    {
+        if (multipliedValue == testValue)
+        {
+            operations.push('*');
+            return true;
+        }
+        else if (addedValue == testValue)
+        {
+            operations.push('+');
+            return true;
+        }
+        else if (concatenatedValue == testValue)
+        {
+            operations.push('|');
+            return true;
+        }
+
+        return false;
+    }
+    else
+    {
+        if (multipliedValue > 0 && multipliedValue <= testValue)
+        {
+            if (IsEquationValidPartTwo(testValue, multipliedValue, nextIterator, endIterator, operations))
+            {
+                operations.push('*');
+                return true;
+            }
+        }
+
+        if (addedValue <= testValue)
+        {
+            if (IsEquationValidPartTwo(testValue, addedValue, nextIterator, endIterator, operations))
+            {
+                operations.push('+');
+                return true;
+            }
+        }
+
+        if (previousEvaluation > 0 && concatenatedValue <= testValue)
+        {
+            if (IsEquationValidPartTwo(testValue, concatenatedValue, nextIterator, endIterator, operations))
+            {
+                operations.push('|');
                 return true;
             }
         }
@@ -128,26 +200,24 @@ int main(int argc, char *argv[])
             std::vector<int> numbers = equation.second;
             std::stack<char> operations;
 
-            if (IsEquationValid(testValue, 0, numbers.begin(), numbers.end(), operations))
+            if (IsEquationValidPartOne(testValue, 0, numbers.begin(), numbers.end(), operations))
             {
                 operations.pop();
 
-                std::cout << testValue;
+                // // DEBUG
+                // std::cout << testValue<< " : ";
+                // for (auto nb : numbers)
+                // {
+                //     char operation = '\n';
+                //     if (!operations.empty())
+                //     {
+                //         operation = operations.top();
+                //         operations.pop();
+                //     }
 
-                std::cout << " : ";
-                for (auto nb : numbers)
-                {
-                    char operation = '\n';
-                    if (!operations.empty())
-                    {
-                        operation = operations.top();
-                        operations.pop();
-                    }
-
-                    std::cout << nb << operation;
-                }
-
-                std::cout << std::endl;
+                //     std::cout << nb << operation;
+                // }
+                // std::cout << std::endl;
 
                 validTestValuesAccumulator += testValue;
             }
@@ -158,9 +228,38 @@ int main(int argc, char *argv[])
 
     // Exercise 2
     {
-        int validNewObstaclePositionNumber = 0;
+        uint64_t validTestValuesAccumulator = 0;
 
-        std::cout << "\n\n" << "Exercise 2 result :\n" << validNewObstaclePositionNumber << "\n\n\n";
+        for (auto equation : equations)
+        {
+            uint64_t testValue = equation.first;
+            std::vector<int> numbers = equation.second;
+            std::stack<char> operations;
+
+            if (IsEquationValidPartTwo(testValue, 0, numbers.begin(), numbers.end(), operations))
+            {
+                operations.pop();
+
+                // // DEBUG
+                // std::cout << testValue << " : ";
+                // for (auto nb : numbers)
+                // {
+                //     char operation = '\n';
+                //     if (!operations.empty())
+                //     {
+                //         operation = operations.top();
+                //         operations.pop();
+                //     }
+
+                //     std::cout << nb << operation;
+                // }
+                // std::cout << std::endl;
+
+                validTestValuesAccumulator += testValue;
+            }
+        }
+
+        std::cout << "\n\n" << "Exercise 2 result :\n" << validTestValuesAccumulator << "\n\n\n";
     }
 
     return 0;
