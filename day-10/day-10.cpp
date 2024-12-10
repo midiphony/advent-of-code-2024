@@ -5,14 +5,7 @@
 
 #include <set>
 
-enum Direction
-{
-    Up,
-    Right,
-    Down,
-    Left
-};
-
+// X and Y "Position" struct from day-06
 struct Position
 {
     int x, y;
@@ -35,13 +28,12 @@ struct Position
 
 using Map = std::vector<std::vector<int>>;
 
-// Make the guard walk in front of him
-// Return true if he could walk or turn, false if he's getting out of the map
-void FindDestinationsFrom(const Position &currentCellPosition, const Map &map, std::set<Position> &uniqueDestinations)
+void FindDestinationsFrom(const Position &currentCellPosition, const Map &map, std::set<Position> &uniqueDestinations, int &totalTrailsNumber)
 {
     int currentCellValue = map[currentCellPosition.y][currentCellPosition.x];
     if (currentCellValue >= 9)
     {
+        totalTrailsNumber++;
         uniqueDestinations.insert(currentCellPosition);
         return;
     }
@@ -56,25 +48,25 @@ void FindDestinationsFrom(const Position &currentCellPosition, const Map &map, s
     if(up.y < map.size())
     {
         if (map[up.y][up.x] == nextExpectedCellValue)
-            FindDestinationsFrom(up, map, uniqueDestinations);
+            FindDestinationsFrom(up, map, uniqueDestinations, totalTrailsNumber);
     }
 
     if (down.y >= 0)
     {
         if (map[down.y][down.x] == nextExpectedCellValue)
-            FindDestinationsFrom(down, map, uniqueDestinations);
+            FindDestinationsFrom(down, map, uniqueDestinations, totalTrailsNumber);
     }
 
     if (left.x >= 0)
     {
         if (map[left.y][left.x] == nextExpectedCellValue)
-            FindDestinationsFrom(left, map, uniqueDestinations);
+            FindDestinationsFrom(left, map, uniqueDestinations, totalTrailsNumber);
     }
 
     if (right.x < map[currentCellPosition.x].size())
     {
         if (map[right.y][right.x] == nextExpectedCellValue)
-            FindDestinationsFrom(right, map, uniqueDestinations);
+            FindDestinationsFrom(right, map, uniqueDestinations, totalTrailsNumber);
     }
 
     return;
@@ -137,9 +129,10 @@ int main(int argc, char *argv[])
     }
     std::cout << std::endl;
 
-    // Exercise 1
+    // Exercise 1 and 2 together (we can keep the number of trailheads AND the number of unique trails at the same time)
     {
-        int validTrailsNumber = 0;
+        int validTrailheadsNumber = 0;
+        int uniqueTrailsNumber = 0;
 
         std::set<Position> uniqueDestinationsFromCurrentCell;
 
@@ -150,14 +143,17 @@ int main(int argc, char *argv[])
                 if (map[y][x] != 0)
                     continue;
 
-                FindDestinationsFrom({x, y}, map, uniqueDestinationsFromCurrentCell);
+                int totalTrailsNumber = 0;
 
-                validTrailsNumber += uniqueDestinationsFromCurrentCell.size();
+                FindDestinationsFrom({x, y}, map, uniqueDestinationsFromCurrentCell, uniqueTrailsNumber);
+
+                validTrailheadsNumber += uniqueDestinationsFromCurrentCell.size();
                 uniqueDestinationsFromCurrentCell.clear();
             }
         }
 
-        std::cout << "\n\n" << "Exercise 1 result :\n" << validTrailsNumber << "\n\n\n";
+        std::cout << "\n\n" << "Exercise 1 result :\n" << validTrailheadsNumber << "\n\n\n";
+        std::cout << "\n\n" << "Exercise 2 result :\n" << uniqueTrailsNumber << "\n\n\n";
     }
 
     return 0;
