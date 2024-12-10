@@ -5,6 +5,8 @@
 
 #include <set>
 
+#include <chrono>
+
 // X and Y "Position" struct from day-06
 struct Position
 {
@@ -131,6 +133,8 @@ int main(int argc, char *argv[])
 
     // Exercise 1 and 2 together (we can keep the number of trailheads AND the number of unique trails at the same time)
     {
+        auto start = std::chrono::high_resolution_clock::now();
+
         int validTrailheadsNumber = 0;
         int uniqueTrailsNumber = 0;
 
@@ -152,8 +156,13 @@ int main(int argc, char *argv[])
             }
         }
 
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
         std::cout << "\n\n" << "Exercise 1 result :\n" << validTrailheadsNumber << "\n\n\n";
         std::cout << "\n\n" << "Exercise 2 result :\n" << uniqueTrailsNumber << "\n\n\n";
+
+        std::cout << "\n\n" << "Time to complete :\n" << (duration) << "us"<< "\n\n\n";
     }
 
     return 0;
