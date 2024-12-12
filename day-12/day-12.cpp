@@ -54,6 +54,31 @@ bool IsAdjacentToRegion(const Position &pos, const Region &region)
     return false;
 }
 
+int GetNumberOfSides(const std::map<int, std::set<int>> & sideIndicesPerLine)
+{
+    int nbSides = 0;
+    for (const auto &sideIndicesPerLineKvp : sideIndicesPerLine)
+    {
+        std::set<int> sideIndices = sideIndicesPerLineKvp.second;
+        nbSides++;
+
+        int previousIndex = *sideIndices.begin();
+
+        for (std::set<int>::iterator sideIndicesIter = sideIndices.begin(); sideIndicesIter != sideIndices.end(); sideIndicesIter++)
+        {
+            int diff = abs((*sideIndicesIter) - previousIndex);
+            if(diff > 1)
+            {
+                nbSides++;
+            }
+
+            previousIndex = *sideIndicesIter;
+        }
+    }
+
+    return nbSides;
+}
+
 int main(int argc, char *argv[])
 {
     char *inputFileName;
@@ -108,11 +133,11 @@ int main(int argc, char *argv[])
     // }
     // std::cout << std::endl;
 
+    RegionsPerType regionsPerType;
+
     // Exercise 1 
     {
         auto start = std::chrono::high_resolution_clock::now();
-
-        RegionsPerType regionsPerType;
 
         for (int y = 0; y < map.size(); y++)
         {
@@ -216,19 +241,79 @@ int main(int argc, char *argv[])
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
-        std::cout << "\n\n" << "Exercise 1 result :\n" << totalPrice << "\n\n\n";
-        std::cout << "\n\n" << "Time to complete :\n" << (duration) << "us"<< "\n\n\n";
+        std::cout << "\n\n" << "Exercise 1 result :\n" << totalPrice << "\n\n";
+        std::cout << "Time to complete :\n" << (duration) << "us"<< "\n\n\n";
     }
 
     // Exercise 2
     {
-        // auto start = std::chrono::high_resolution_clock::now();
-
-        // auto end = std::chrono::high_resolution_clock::now();
-        // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        auto start = std::chrono::high_resolution_clock::now();
         
-        // std::cout << "\n\n" << "Exercise 2 result :\n" << TODO << "\n\n\n";
-        // std::cout << "\n\n" << "Time to complete :\n" << (duration) << "us"<< "\n\n\n";
+        int totalPrice = 0;
+        for (const auto &regionsForType : regionsPerType)
+        {
+            char parcelType = regionsForType.first;
+
+            for (const auto &region : regionsForType.second)
+            {
+                // get area
+                int area = region.size();
+
+                Position bottomLeftRegionPosition = region[0]; // most bottom has priority to most left
+                for (const auto &parcelPosition : region)
+                {
+                    if (parcelPosition.y < bottomLeftRegionPosition.y)
+                        bottomLeftRegionPosition = parcelPosition;
+                    else if (parcelPosition.y == bottomLeftRegionPosition.y && parcelPosition.x < bottomLeftRegionPosition.x)
+                    {
+                        bottomLeftRegionPosition = parcelPosition;
+                    }
+                }
+
+                std::map<int, std::set<int>> leftSideYIndicesPerXIndex;
+                std::map<int, std::set<int>> rightSideYIndicesPerXIndex;
+                std::map<int, std::set<int>> upSideXIndicesPerYIndex;
+                std::map<int, std::set<int>> downSideXIndicesPerYindex;
+
+                // Get perimeter
+                for (const auto &parcelPosition : region)
+                {
+                    Position up = {parcelPosition.x, parcelPosition.y + 1};
+                    Position down = {parcelPosition.x, parcelPosition.y - 1};
+                    Position left = {parcelPosition.x-1, parcelPosition.y};
+                    Position right = {parcelPosition.x+1, parcelPosition.y};
+                    
+                    if (up.y >= map.size() || map[up.y][up.x] != parcelType)
+                        upSideXIndicesPerYIndex[up.y].insert(up.x);
+
+                    if (down.y < 0 || map[down.y][down.x] != parcelType)
+                        downSideXIndicesPerYindex[down.y].insert(down.x);
+
+                    if (left.x < 0 || map[left.y][left.x] != parcelType)
+                        leftSideYIndicesPerXIndex[left.x].insert(left.y);
+
+                    if (right.x >= map[parcelPosition.y].size() || map[right.y][right.x] != parcelType)
+                        rightSideYIndicesPerXIndex[right.x].insert(right.y);
+                }
+
+                int nbSides = 0;
+                nbSides += GetNumberOfSides(upSideXIndicesPerYIndex);
+                nbSides += GetNumberOfSides(downSideXIndicesPerYindex);
+                nbSides += GetNumberOfSides(leftSideYIndicesPerXIndex);
+                nbSides += GetNumberOfSides(rightSideYIndicesPerXIndex);
+
+                // // DEBUG
+                // std::cout << parcelType << " : " << area << " * " << nbSides << " = " << area * nbSides << std::endl;
+
+                totalPrice += area * nbSides;
+            }
+        }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+        std::cout << "\n\n" << "Exercise 2 result :\n" << totalPrice << "\n\n";
+        std::cout << "Time to complete :\n" << (duration) << "us"<< "\n\n\n";
     }
 
     return 0;
